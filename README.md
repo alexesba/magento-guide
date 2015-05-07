@@ -51,6 +51,67 @@
     ***
 
 
+* **Magento Templates and layout files location**
+  * A theme consists of the following elements
+    * **Layout:** Folder includes XML files that define the layout of the theme. Layout files work as a "glue" between the modules
+    (wich are found under the app/code directory), and the template files
+
+    ```
+      app/
+      ├── design
+      │   ├── frontend
+      │   │   ├── package_name
+      │   │   │   └── theme_name
+      │   │   │       ├── etc
+      │   │   │       ├── <b>layout</b>
+      │   │   │       └── template
+    ```
+  Because of magent modularity, all XML data of the default theme are stored in separate files with the name of the module to which they belong to.
+A non-default theme, contrariwise, should have a sigle layout file, named local.xml, where all layout updates are placed.
+
+* **Template**
+  * This folder cointains .phtml files that have HTML and PHP code for reach Magento Blocks which will be displayed in the frontend
+    ```
+      app/
+      ├── design
+      │   ├── frontend
+      │   │   ├── package_name
+      │   │   │   └── theme_name
+      │   │   │       ├── etc
+      │   │   │       ├── layout
+      │   │   │       └── <b>template</b>
+    ```
+* **Locale**
+  * This folder contains all .CSV files organized by language that provide translations in format of languagecode_COUNTRYCODE eg(es_MX, en_US)/translate.csv
+    ```
+      app/
+      ├── design
+      │   ├── frontend
+      │   │   ├── package_name
+      │   │   │   └── theme_name
+      │   │   │       ├── etc
+      │   │   │       ├── layout
+      │   │   │       └── template
+      │   │   │       └── <b>locale</b>
+      │   │   │           └── es_MX
+      │   │   │               └── translate.csv
+    ```
+
+* **Skin and javascript files location**
+  * Skin folder includes javascript, CSS and image files tha  are used in .phtml files in template folder. e.g All the files in this folder vary from theme to theme.
+    ```
+      skin/
+      ├── frontend
+      │   ├── package_name
+      │   │   └── theme_name
+      │   │   |   ├── <b>js</b>
+      │   │   |   ├── <b>css</b>
+      │   │   |   ├── <b>images</b>
+    ```
+  * **JS** folder embodies **js** files, libraries and frameworks that are used via frontend and backend, I f you need to add a new Javascript/AJAX library on your module from local code pool
+    requires special scripts, they should be placed here.
+
+
 ## Design Areas:
 ```
   All the frontend files are stored on these areas:
@@ -65,20 +126,4 @@
   * Files from this area will be displayed during the installation process.
 * **sql**
   * Handles any custom database tables wich will be used by the module and process all upgrades to the extension.
-
-* **Magento Templates and layout files location**
-  * A theme consists of the following elements
-    * **Layout:** Folder includes XML files that define the layout of the theme. Layout files work as a "glue" between the modules
-    (wich are found under the app/code directory), and the template files
-
-    ```
-      app/
-      ├── design
-      │   ├── frontend
-      │   │   ├── base
-      │   │   │   └── default
-      │   │   │       ├── etc
-      │   │   │       ├── <b>layout</b>
-      │   │   │       └── template
-    ```
 
