@@ -127,3 +127,11 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
 * **sql**
   * Handles any custom database tables wich will be used by the module and process all upgrades to the extension.
 
+
+* **Class naming conventions and their relationship with the autoloader**
+  >Magento was developed based on the Zend Framework, so the rules of class naming in Magento were taken from the Zend Framework
+
+  Magento standardizes class names depending on their location in the file system. Such standadization enables atomatic class loading(**autoloader**)
+  instead of using require_once and include_once functions. Rather than the directory separator('/' - invalid character for class names), developers use the underscor
+  character('_')
+
