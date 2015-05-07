@@ -65,3 +65,20 @@
   * Files from this area will be displayed during the installation process.
 * **sql**
   * Handles any custom database tables wich will be used by the module and process all upgrades to the extension.
+
+* **Magento Templates and layout files location**
+  * A theme consists of the following elements
+    * **Layout:** Folder includes XML files that define the layout of the theme. Layout files work as a "glue" between the modules
+    (wich are found under the app/code directory), and the template files
+
+    ```
+      app/
+      ├── design
+      │   ├── frontend
+      │   │   ├── base
+      │   │   │   └── default
+      │   │   │       ├── etc
+      │   │   │       ├── <b>layout</b>
+      │   │   │       └── template
+    ```
+
