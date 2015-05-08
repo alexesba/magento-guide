@@ -237,5 +237,19 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
           ```
 
     * Conflicts with the software part
+      * The main reason for module conflicts could be in the use of dependencies and class rewriting. You should regard your module
+        configuration file(/Namespace_Modulename/etc/config.xml), in which class rewriting with `<rewrite></rewrite>` tags can be used. Eg
+
+        ```xml
+            <customer>
+              <rewrite>
+                   <form_edit>Namespace_Modulename_Block_Rewrite_BlockClass</form_edit>
+               </rewrite>
+            </customer>
+        ```
+        Incorrect use of class methods is the main reason of conflicts origin. There are several ways to solve this problem, but I would like to highlight the very best
+        and most correct way in my opinion
+        - The elimination of the classes overriding. The idea of this method is similar to the previous method of module conflict resilving and offers setting
+          Dependence of one class from another
     * Conflicts in a module display
 
