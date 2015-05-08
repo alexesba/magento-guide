@@ -250,6 +250,50 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
         Incorrect use of class methods is the main reason of conflicts origin. There are several ways to solve this problem, but I would like to highlight the very best
         and most correct way in my opinion
         - The elimination of the classes overriding. The idea of this method is similar to the previous method of module conflict resilving and offers setting
-          Dependence of one class from another
+          Dependence of one class from another.
+
+          `Namespace_Modulename/etc/config.xml`
+
+          ```xml
+            <customer>
+              <rewrite>
+                <form_edit>Namespace_Modulename_Block_Rewrite_BlockClass</form_edit>
+              </rewrite>
+            </customer>
+          ```
+          `Namespace_OtherModulename/etc/config.xml`
+
+          ```xml
+            <customer>
+              <rewrite>
+                <form_edit>Namespace_OtherModulename_Block_Rewrite_BlockClass</form_edit>
+              </rewrite>
+            </customer>
+          ```
+        - Solution:
+        First remove the rewriting for the first module
+
+        ```xml
+          <customer>
+            <form_edit> Namespace_Modulename_Block_Rewrite_BlockClass</form_edit>
+          </customer>
+        ```
+        Second Use the first class inheritance from the second one:
+
+        ```
+          Class Namespace_Modulename_Block_Rewrite_BlockClass extends Namespace_OtherModulename_Block_Rewrite_BlockClass
+        ```
+
     * Conflicts in a module display
+      * The most frquent conflict appears while using several modules, problems with displaying module on the frontend.
+      * Some reasons:
+        * Blocks overrding in layout settings
+        * Use different template for the same blocks
+        * Removing blocks for another module to be embedded in.
+
+* **Explain how Magento loads and manipulates configuration information**
+  At very basic level, when you load up your store, the following happens:
+
+  1. The basic configuration is initialized
+  2. Module configuration is initialized
 
