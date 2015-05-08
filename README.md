@@ -1,5 +1,5 @@
-## In Magento:
-* **Code pools**:
+> ## In Magento:
+> * **Code pools**:
   * **core**
     * Holds modules that are distributed with the base Magento and make up the core functionality
   * **community**
@@ -134,4 +134,108 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
   Magento standardizes class names depending on their location in the file system. Such standadization enables atomatic class loading(**autoloader**)
   instead of using require_once and include_once functions. Rather than the directory separator('/' - invalid character for class names), developers use the underscor
   character('_')
+
+  For example, the Mage_Catalog_Model_Product class is located in the /app/code/core/Mage/Catalog/Model/Product.php category. Magento Autoloader replaces all underscore characters
+('_') with the category separator('/') and looks for the file in one of the categories(/app/code/local/ can be disables in the app/etc/local.xml in the disable_local_modules tag).
+
+  - /app/code/core
+  - /app/code/community
+  - /app/code/local
+  - /lib/
+> File search categories in Magento are defined in app/Mage.php
+```
+  Mage::register('original_include_path', get_include_path());
+
+  if (defined('COMPILER_INCLUDE_PATH')) {
+      $appPath = COMPILER_INCLUDE_PATH;
+      set_include_path($appPath . PS . Mage::registry('original_include_path'));
+      include_once "Mage_Core_functions.php";
+      include_once "Varien_Autoload.php";
+  } else {
+      /**
+       * Set include path
+       */
+      $paths[] = BP . DS . 'app' . DS . 'code' . DS . 'local';
+      $paths[] = BP . DS . 'app' . DS . 'code' . DS . 'community';
+      $paths[] = BP . DS . 'app' . DS . 'code' . DS . 'core';
+      $paths[] = BP . DS . 'lib';
+
+      $appPath = implode(PS, $paths);
+      set_include_path($appPath . PS . Mage::registry('original_include_path'));
+      include_once "Mage/Core/functions.php";
+      include_once "Varien/Autoload.php";
+  }
+
+  Varien_Autoload::register();
+  ```
+  After defining all include paths you see, at the very last line of above snippet, that
+  Magento's autoloader ins initialized. This line triggers the underneath snippet, which registers
+  the autoload() method of the Varient_Autoloader object as it's autoloader weapon of choice.
+  So behind the scenes Magento will now run each classname through this method to get to it's related file.
+
+* **Describe methods for resolving module conflicts.**
+  * There are **3 levels** of module compatibility conflicts
+    * Conflicts with configuration files
+      * When thow modules use the same class dependence, future conflicts may appear in the program parts of modules(improver use of the class constructor). This group of problems
+        is closel connected to our second group 'conflicts with software part'.
+        eg:
+
+        Namespace_OtherModulename.xml
+
+        ```xml
+          <config>
+              <modules>
+                  <Namespace_OtherModulename>
+                      <active>true</active>
+                      <codePool>community</codePool>
+              <depends><Mage_Something/></depends>
+                  </Namespace_OtherModulename>
+              </modules>
+          </config>
+        ```
+        Namespace_Modulename.xml
+
+        ```xml
+          <config>
+              <modules>
+                  <Namespace_Modulename>
+                      <active>true</active>
+                      <codePool>community</codePool>
+              <depends><Mage_Something/></depends>
+                  </Namespace_Modulename>
+              </modules>
+          </config>
+        ```
+
+        We can fix them by replacing with the next code:
+
+        Namespace_OtherModulename.xml
+
+          ```xml
+            <config>
+                <modules>
+                    <Namespace_OtherModulename>
+                        <active>true</active>
+                        <codePool>community</codePool>
+                <depends><Mage_Something/></depends>
+                    </Namespace_OtherModulename>
+                </modules>
+            </config>
+          ```
+          Namespace_Modulename.xml
+
+          ```xml
+              <config>
+                  <modules>
+                      <Namespace_Modulename>
+                          <active>true</active>
+                          <codePool>community</codePool>
+                  <depends><Namespace_OtherModulename/></depends>
+                      </Namespace_Modulename>
+                  </modules>
+              </config>
+          ```
+
+    * Conflicts with the software part
+    * Conflicts in a module display
 
