@@ -1,5 +1,5 @@
-> ## In Magento:
-> * **Code pools**:
+## In Magento:
+* **Code pools**:
   * **core**
     * Holds modules that are distributed with the base Magento and make up the core functionality
   * **community**
