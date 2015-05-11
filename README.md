@@ -143,7 +143,7 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
   - /app/code/local
   - /lib/
 > File search categories in Magento are defined in app/Mage.php
-```
+```php
   Mage::register('original_include_path', get_include_path());
 
   if (defined('COMPILER_INCLUDE_PATH')) {
@@ -297,3 +297,91 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
   1. The basic configuration is initialized
   2. Module configuration is initialized
 
+  * Each module on Magento must include a `config.xml` file located on
+  `app/code/[codePool]/Namespace/Modulename/etc/config.xml`
+  This file contains all basic module setting and `app/etc/modules/Namespace_Modulename.xml` contains
+  information about code pool and extension activation flag.
+
+  * Global settings for Magento instalation, inlcuding database connection data and admin panel addrress, are
+  sorted in `app/etc/config.xml` and `app/etc/local.xml`.
+
+  > Everything starts on the **index.php** file with the next lines:
+  ```php
+    /* Store or website code */
+    $mageRunCode = isset($_SERVER['MAGE_RUN_CODE']) ? $_SERVER['MAGE_RUN_CODE'] : '';
+
+    /* Run store or run website */
+    $mageRunType = isset($_SERVER['MAGE_RUN_TYPE']) ? $_SERVER['MAGE_RUN_TYPE'] : 'store';
+
+    Mage::run($mageRunCode, $mageRunType);
+  ```
+  If we trace the code starting from the inex.php we get the following outcome:
+
+  ```php
+  Index.php
+    Mage::run()
+      self::$_app = new Mage_Core_Model_App();
+      self::$_app = run(...);
+  ```
+  The `Mage::run()` all wrappers for precessing configuration loading are located in `Mage_Core_Model_App` and refer
+  to the `Mage_Core_Model_Config` methods. Calling `the Mage::app()`, we immediately call `Mage_Core_Model_Config::init()`, which contains
+  the process of configuration loadig.
+
+  Finally we come to `Magento_Core_Model_Config`, inherited from `Mage_Core_Model_Config_Base` and `Varien_Simplexml_Config`.
+
+  So let's refer to:  `Mage_Core_Model_Config::init()` method:
+  ```php
+    public function init($options=array())
+      {
+          $this->setCacheChecksum(null);
+          $this->_cacheLoadedSections = array();
+          $this->setOptions($options);
+          $this->loadBase();
+
+          $cacheLoad = $this->loadModulesCache();
+          if ($cacheLoad) {
+              return $this;
+          }
+          $this->loadModules();
+          $this->loadDb();
+          $this->saveCache();
+          return $this;
+      }
+  ```
+  ``$this->loadBase();``
+
+    From the beginning we define the absolute path to `app/etc` directory. Then we get a list of all
+  .xml fules from this catalog, read their content and merge into a **Single simpleXmlElement Object**
+
+  If local.xml file has been loaded( which generally means that Magento as already been installed). set flag
+  `$this->_isLocalConfigLoaded = true;` It will be used later to initialize store and load module setup scripts.
+
+  The next spe is loading of the most extensive configuration part - `Modules configuration.`
+  ```php
+    /**
+         * Load modules configuration
+         *
+         * @return Mage_Core_Model_Config
+         */
+        public function loadModules()
+        {
+            Varien_Profiler::start('config/load-modules');
+            $this->_loadDeclaredModules();
+
+            $resourceConfig = sprintf('config.%s.xml', $this->_getResourceConnectionModel('core'));
+            $this->loadModulesConfiguration(array('config.xml',$resourceConfig), $this);
+
+            /**
+             * Prevent local.xml directives overwriting
+             */
+            $mergeConfig = clone $this->_prototype;
+            $this->_isLocalConfigLoaded = $mergeConfig->loadFile($this->getOptions()->getEtcDir().DS.'local.xml');
+            if ($this->_isLocalConfigLoaded) {
+                $this->extend($mergeConfig);
+            }
+
+            $this->applyExtends();
+            Varien_Profiler::stop('config/load-modules');
+            return $this;
+        }
+    ```
