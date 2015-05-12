@@ -71,6 +71,7 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
 
 * **Template**
   * This folder cointains .phtml files that have HTML and PHP code for reach Magento Blocks which will be displayed in the frontend
+
     ```
       app/
       ├── design
@@ -83,6 +84,7 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
     ```
 * **Locale**
   * This folder contains all .CSV files organized by language that provide translations in format of languagecode_COUNTRYCODE eg(es_MX, en_US)/translate.csv
+
     ```
       app/
       ├── design
@@ -99,6 +101,7 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
 
 * **Skin and javascript files location**
   * Skin folder includes javascript, CSS and image files tha  are used in .phtml files in template folder. e.g All the files in this folder vary from theme to theme.
+
     ```
       skin/
       ├── frontend
