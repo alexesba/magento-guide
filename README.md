@@ -1,3 +1,4 @@
+* [Observer Pattern](#observer)
 ## In Magento:
 * **Code pools**:
   * **core**
@@ -360,6 +361,9 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
   `$this->_isLocalConfigLoaded = true;` It will be used later to initialize store and load module setup scripts.
 
   The next spe is loading of the most extensive configuration part - `Modules configuration.`
+
+  **$this->loadModules();**
+
   ```php
     /**
          * Load modules configuration
@@ -387,4 +391,408 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
             Varien_Profiler::stop('config/load-modules');
             return $this;
         }
+    ```
+  **$this->_loadDeclaredModules();**
+    Scan the `app/etc/modules` directory and collect the list of paths to all .xml files, Indicating all modules in the system.
+    We form an associative array with "base" and "custom" keys. Only `Mage_All.xml` path goes to the "base" section. Modules from the
+    Mageto basic pack located in `app/core/Mag` code pool "core" go to the “mage“ section “Custom“ section collects the rest of modules.
+    At the end we merge everything into a single array. The data is stored in the following sequence: `Mage_All.xml`, modules with Mage namespace
+    ,All other modules.
+
+    > Mage_All.xml contains all information required for loading modules that are crucial for the proper system operation.
+
+   All the nformation collected from the .xml files is loaded into `Mage_Core_Model_Config_Base $unsortedConfig` then we get the `$moduleDepends` array,
+   based on < depends >, < active > flags and module name.
+   At the end of `_loadDeclaredModules()` we create a **simpleXmlElement Object** again and merge it with the one that has been created earlier from `app/etc/*.xml`
+
+   In the method **loadModules()**:
+   ```php
+    $resourceConfig = sprintf('config.%s.xml', $this->_getResourceConnectionModel('core'));
+    $this->loadModulesConfiguration(array('config.xml',$resourceConfig), $this);
+   ```
+
+   `$resourceConfig` contains config.mysql4.xml line, our next step will be loading configuration from config.mysql4.xml and config.mysql4.xml files.
+
+
+* **Describe class group configuration and use in factory methods**
+  * Magento uses factory methods to instantiate Models, Blocks and Helpers classes, applying  a necessary method (eg: getModel, helper, etc.). You should pass and abstract name of a
+  class group, followed by an entity name.
+  > Class groups are described in configuratin XML files in `/etc/config.xml` files of appropiate modules.
+
+
+  eg: let's try to instatiate the product Object, This can be done by using `getModel()` method.
+
+  ```php
+    $product = Mage::getModel('catalog/product');
+  ```
+  This method retrieves an instance of `Magento_Catalog_Product` this way:
+
+  `app/Mage.php`
+
+  ```php
+    /**
+     * Retrieve model object
+     *
+     * @link    Mage_Core_Model_Config::getModelInstance
+     * @param   string $modelClass
+     * @param   array|object $arguments
+     * @return  Mage_Core_Model_Abstract|false
+     */
+    public static function getModel($modelClass = '', $arguments = array())
+    {
+        return self::getConfig()->getModelInstance($modelClass, $arguments);
+    }
+  ```
+  **getModel()** calls **getModelInstance()** method, which gets class instance with the help of
+  **getModelCalssName**
+
+  `app/code/core/Mage/Core/Model/Config.php`
+  ```php
+      /**
+     * Get model class instance.
+     *
+     * Example:
+     * $config->getModelInstance('catalog/product')
+     *
+     * Will instantiate Mage_Catalog_Model_Mysql4_Product
+     *
+     * @param string $modelClass
+     * @param array|object $constructArguments
+     * @return Mage_Core_Model_Abstract|false
+     */
+    public function getModelInstance($modelClass='', $constructArguments=array())
+    {
+        $className = $this->getModelClassName($modelClass);
+        if (class_exists($className)) {
+            Varien_Profiler::start('CORE::create_object_of::'.$className);
+            $obj = new $className($constructArguments);
+            Varien_Profiler::stop('CORE::create_object_of::'.$className);
+            return $obj;
+        } else {
+            return false;
+        }
+    }
+
+
+    /**
+     * Retrieve module class name
+     *
+     * @param   sting $modelClass
+     * @return  string
+     */
+    public function getModelClassName($modelClass)
+    {
+        $modelClass = trim($modelClass);
+        if (strpos($modelClass, '/')===false) {
+            return $modelClass;
+        }
+        return $this->getGroupedClassName('model', $modelClass);
+    }
+  ```
+
+    **getGroupedClassName()** method does all the work. As you can see from **getModelClassName**, we pass the group type(model, block or helper) and the class identifier
+  (in our case catalog/product) to this method. It explodes our string by using '/' as needle, removes whitespaces and forms array of strings.
+  Then we load `Varien_Simplexml_Element` and pass our group name (catalog) to find the class prefix name from `config.xml` of our module. In our example it wold be `Mage_Catalog_Model`;
+  in case this extension was overwritten, it could be `Namespace_Catalog_Model`.
+
+  We also add entity class name(product) and after using Magento `uc_words` based on PHP ucwords that return a string with the first character of each word capitalized, if that character
+  is alphanumeric. And finally receive `Mage_Catalog_Model_Product` that will be returned in `getModelInstance`
+
+  `app/code/core/Mage/Core/Model/Config.php`
+
+  ```php
+     /**
+       * Retrieve class name by class group
+       *
+       * @param   string $groupType currently supported model, block, helper
+       * @param   string $classId slash separated class identifier, ex. group/class
+       * @param   string $groupRootNode optional config path for group config
+       * @return  string
+       */
+      public function getGroupedClassName($groupType, $classId, $groupRootNode=null)
+      {
+          if (empty($groupRootNode)) {
+              $groupRootNode = 'global/'.$groupType.'s';
+          }
+
+          $classArr = explode('/', trim($classId));
+          $group = $classArr[0];
+          $class = !empty($classArr[1]) ? $classArr[1] : null;
+
+          if (isset($this->_classNameCache[$groupRootNode][$group][$class])) {
+              return $this->_classNameCache[$groupRootNode][$group][$class];
+          }
+
+          $config = $this->_xml->global->{$groupType.'s'}->{$group};
+
+          // First - check maybe the entity class was rewritten
+          $className = null;
+          if (isset($config->rewrite->$class)) {
+              $className = (string)$config->rewrite->$class;
+          } else {
+              /**
+               * Backwards compatibility for pre-MMDB extensions.
+               * In MMDB release resource nodes <..._mysql4> were renamed to <..._resource>. So <deprecatedNode> is left
+               * to keep name of previously used nodes, that still may be used by non-updated extensions.
+               */
+              if (isset($config->deprecatedNode)) {
+                  $deprecatedNode = $config->deprecatedNode;
+                  $configOld = $this->_xml->global->{$groupType.'s'}->$deprecatedNode;
+                  if (isset($configOld->rewrite->$class)) {
+                      $className = (string) $configOld->rewrite->$class;
+                  }
+              }
+          }
+
+          // Second - if entity is not rewritten then use class prefix to form class name
+          if (empty($className)) {
+              if (!empty($config)) {
+                  $className = $config->getClassName();
+              }
+              if (empty($className)) {
+                  $className = 'mage_'.$group.'_'.$groupType;
+              }
+              if (!empty($class)) {
+                  $className .= '_'.$class;
+              }
+              $className = uc_words($className);
+          }
+
+          $this->_classNameCache[$groupRootNode][$group][$class] = $className;
+          return $className;
+      }
+  ```
+
+
+  * **Helpers**
+    * Istantiate a helper class the same way  you do models.
+    We call `Mage::helper('group/entity') and it calls `getHelperClassName()` this method has a default
+    value 'data' in entity name. It means that if you pass only a group name, for eg: `Mage::helper('catalog'),
+    it will create an object of `Mage_Catalog_Helper_Data` class.
+
+      `app/Mage.php`
+      ```php
+       /**
+       * Retrieve helper object
+       *
+       * @param string $name the helper name
+       * @return Mage_Core_Helper_Abstract
+       */
+      public static function helper($name)
+      {
+          $registryKey = '_helper/' . $name;
+          if (!self::registry($registryKey)) {
+              $helperClass = self::getConfig()->getHelperClassName($name);
+              self::register($registryKey, new $helperClass);
+          }
+          return self::registry($registryKey);
+      }
+      ```
+      `app/code/core/Mage/Core/Model/Config.php`
+      ```php
+       /**
+       * Retrieve helper class name
+       *
+       * @param   string $name
+       * @return  string
+       */
+      public function getHelperClassName($helperName)
+      {
+          if (strpos($helperName, '/') === false) {
+              $helperName .= '/data';
+          }
+          return $this->getGroupedClassName('helper', $helperName);
+      }
+      ```
+  * **Blocks**
+    * The process of instantianting blocks is similar to the one of creating models and helpers. **Blocks** can be instantiated via layout xml
+
+      `Namespace_Modulename_Block`
+
+      ```php
+         Mage_Core_Model_Layout::createBlock(...);
+      ```
+
+*  **Describe the process and configuration of class overrides in Magento**
+  I recomend to rewrite a method using the Inheritance
+
+   **How to do it?**
+  Creating a module. In config.xml inside globals-> models, blocks and helpers we can specify our rewrites.
+  eg: to override the standard class of the `Mage_Catalog_Model_Product` product, you need to use:
+
+    ```xml
+      <global>
+        ...
+        <models>
+          ...
+          <catalog>
+            <rewrite>
+              <product> Namespace_Modulename_Model_MyProduct </product>
+            </rewrite>
+          </catalog>
+        </models>
+      </global>
+    ```
+
+    Principle is the same as in Magento path.
+
+    `<catalog>`  Specify module namespace
+
+    `<rewrite>`  mark that next list of modules rewrites will be described;
+
+    `<product>` Part of the classname following the group classname(`Mage_Catalog_Model`). A new class name is specified inside.
+    And the class will be used isntead of the standard one.
+
+    To override the `Mage_Adminhtml_Sales_Order_Create` class, we will add the following lines in configuration (models section).
+    ```xml
+      <adminhtml>
+          <rewrite>
+            <sales_order_create>Namespace_Modulename_Adminhtml_Order_Create</sales_order_create>
+          </rewrite>
+      </adminhtml>
+    ```
+  * **Controller**
+    * To override a controller, we add a new router to config.xml of the module eg:
+    ```xml
+      <frontend>
+        <routers>
+          <modulename>
+            <use>standard</use>
+            <args>
+              <module>Namespace_Modulename</module>
+              <frontName>routername</frontName>
+            </args>
+          </modulename>
+        </routes>
+      </frontend>
+    ```
+    Normally we set the connection between our router and a module. In this case we override the connection of existing router with our mudule.
+
+    ```xml
+      <frontend>
+        <routers>
+          <prevmodulename>
+            <args>
+              <modules>
+                <namespace_modulename before="Prevnamespace_Prevmodulename">
+                  Namespace_Modulename
+                  </namespace_modulename>
+              </modules>
+            </args>
+          </prevmodulename>
+        </routers>
+      </frontend>
+    ```
+    Next we create a controller with the same name in our module like this:
+    ```php
+      <?php
+        require_once 'Prevnamespace/Prevmodulename/controllers/FilenameController.php';
+        class Namespace_Modulename_FilenameController extends Prevnamespace_Prevmodulename_FilenameController
+        {
+          ...
+        }
+    ```
+
+  * **Register an Observer**
+    * **Observer Pattern**, implemented in Magento, allows inserting additional actions at given moments of code execution
+    > Events will be declared in config.xml via layout. In our case:
+
+    ```xml
+      <adminhtml>
+        <events>
+          <catalog_product_save_after>
+            <observers>
+              <my_individual_name>
+                <type> sigleton </type>
+                <class>modulename/observer</class>
+                <method>methodName</method>
+              </my_individual_name>
+            </observers>
+          </catalog_product_save_after>
+        <events>
+      </adminhtml>
+    ```
+    > In this case I announce the event for area adminhtml, but events may also be described both by **global** and of course **frontend**
+
+    ```php
+      class Namespace_Module_Module_Observer
+      {
+        public function methodName(Varien_Event_Observer $observer)
+        {
+          ...
+        }
+      }
+    ```
+
+    We can get the data of the array, transfered in `dispatchEvent` method, via `$observer` object
+    We are free to use the ones, formed automatically and invidually for your module for models and controllers
+
+    * Models
+
+      * *_load_before
+      * *_load_after
+      ---
+      * *_save_before
+      * *_save_after
+      * *_save_commit_after
+      ---
+      * *_delete_before
+      * *_delete_after
+      * *_delete_commit_after
+      ---
+      * - protected $_eventPrefix='' `Specified individually in a created model`
+    * Controllers
+      * controller_action_predispatch_*
+      * controller_action_predispatch_**
+      ---
+      * controller_action_postdispatch_*
+      * controller_action_postdispatch_**
+      ---
+      * controller_action_layout_render_before_** `described in a controller, it mostly concerns blocks`
+      ---
+      * - RouteName
+      * - RouteName_ControllerName_ActionName
+
+  * **Set up a cron job**
+    * Here is how config of our custom extension will look like.
+      ```xml
+        <config>
+          <crontab>
+            <jobs>
+              <cronjob_code>
+                <scheudule><cron_expr>*/15 * * * *</cron_expr></schedule>
+                <run><model>modulename/modelname:methodName</model></run>
+              </cronjob_code>
+            </jobs>
+          </crontab>
+        </config>
+      ```
+
+      `<cronjob_tab>` Should be unique identifier, will be used as job_code in cron_schedule DB table.
+
+      `<schedule><cron_expr>* * * * *</cron_expr></schedule>` Each asterisk stands for time period corresponding to: minutes, hours, days, months, years.
+      If we leave it this way(* * * * *), cron job will executed every minute. in our previous example the cron job will be executed every 15 minutes.
+
+      `<schedule><cron_expr>*/15 * * * *</cron_expr></schedule>` or we can use alternative syntax to do that.`<schedule><cron_expr>0,15,30,45****</cron_expr></schedule>`.
+
+      `<run><model>modulename/modelname:methodName</model></run>` your modulename and modelname should be written in lowercase and stored according to certain(`Magento Factory Method`) rules.
+      `methodName` should be written as is.
+
+      >We need to write the code of our method in `app/code/local/Namespace/Modulename/Model/Modelname.php`
+
+      ```php
+        <?php
+          public function methodName(){
+          // your logic here.
+          }
+      ```
+  * Magento XML DOM configuration-based
+    * **How does the framework discover active modules and their configuration?**
+      `Mage_Core_Model_Config::_loadDeclaredModules()`
+
+    * **What are the common methods with which the framework accesses its configuration values and areas?**
+    ```php
+      Mage_Core_Model_Config::getDistroServerVars (Get default server variables values ),
+      Magento_Core_Model_Config::getStoresConfigByPath(Retrieve store Ids for $path with checking ),
+      Magento_Core_Model_Config::$_eventAreas( Configurationfor events by area)
     ```
