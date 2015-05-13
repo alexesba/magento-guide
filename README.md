@@ -796,3 +796,160 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
       Magento_Core_Model_Config::getStoresConfigByPath(Retrieve store Ids for $path with checking ),
       Magento_Core_Model_Config::$_eventAreas( Configurationfor events by area)
     ```
+
+  * **By what process do the factory methods and autoloader enable class instantiation?**
+    ```php
+      Varient_Autoload
+      spl_autoload_register
+    ```
+  * **Which class types have configured prefixes, and how does this relate to
+  class overrides?**
+    Prefixes are used for **BLOCKS, MODELS and HELPERS**. Using prefixes and not referring to classes directly by name allows rewriting the classes in the configuration and without the need to modify the code that uses them.
+
+* **REQUEST FLOW**
+  * the request object is initialized un `Mage_Core_Model_App` and the `_initRequest()` method. `getRequest()` and `getResponse` are relevant.
+
+  * **Describe the steps for application initialization**
+    *  Check compiler configuration
+    *  Include Mage.php
+        - Setup core functions and autoloader
+        - Register the autoloader
+    *  `Mage::run()`
+      - Instantiate Mage_Core_Model_App
+      - Instantiate the Config model
+      - `$app->run()`
+        - `baseInit()` - load the base config and initialize cache.
+        - `initModules() - load module configuration.
+        - Run all the required SQL install and upgrade scripts
+        - Setup the locale.
+        - `initRequest()` - load the request information into the model.
+        - Run all the required data install and upgrade scripts.
+        - Dispatch the request.
+
+    * **Loading Magento Module and Database Configuration**
+      - The base configuration of Magento is loaded in `Mage_Core_Model_Config::loadBase`. It grabs the glob of `app/etc/*.xml` which contains
+        key config informatio. It grabs the glob of `app/etc/*.xml` which contains
+          key config information, e.g. database credentials, the core module, the results of installation.
+
+          Database config is stored in app/etc/local.xml and app/etc/config.xml
+
+          `Mage_Core_Model_Config::loadModules` handles looping over each of the modules that exist in app/etc/modules and merging their own config.xml files
+          from their respective module directories.
+
+          The order that modules are loaded is:
+            1. Mage_All.xml
+            2. Mage_*.xml
+            3. Everything else.
+          If a module depends on another, Magento makes sure it exists and loads its configuration first.
+    * **FRONT CONTROLLER**
+      * Role:
+        The front controller performs the routing of the request to the appropiate controller. It loops over all of the registered routers, passing the request to each one of the,, to be matched
+        against a controller capable of handling it. After the request has been dispatched, the front controller send the response to the client.
+
+      * Events:
+        * `controller_front_init_before`
+          Fired before adding the routers. It is useful for adding a router that takes precedence over any others.
+        * `controller_front_init_routers`
+          Fired after adding the routers, but before the default router is added. It is useful for adding general routers or modifying existing ones.
+        * `controller_front_send_response_before`
+          Fired after the response is sent out. It is useful for modifying the response data after the dispatch.
+        * `controller_front_send_response_after`
+          Fired after the response is sent out. It is useful for performing any tear down operations after the request has been dealt with.
+    * **ADDING ROUTER CLASSES**
+      > There are two ways to add routes.
+
+      * Using configuration
+        ```xml
+          <config>
+            <default>
+              <web>
+                <routers>
+                  <{name}>
+                    <areas></areas>
+                    <class></class>
+                  </{name}>
+                </routers>
+              </web>
+            </default>
+          </config>
+        ```
+      * By observer the `controller_front_init_before` or `controller_front_init_routers` events and injecting the router into the front controller
+
+    * **URL REWRITES**
+
+      * **URL Structure**
+        The URL structure in Magento generally uses the format {base_url}/{front_name}/{controller}/{action}.
+        `Mage_Core_Controller_Varien_Router_Standard` parses the URLs in this format and maps them to a module used and the controller action to be
+        executed.
+
+      * **URL Rewrite Process**
+        URL rewrites happen in the Front controller before the routing. The database rewrites are checked and applied first, followd by the configuration(`global->rewrite`) rewrites.
+        Rewrites can either redirect the request using HTTP methods, update the request path(keeping the old one for reference) or completely replace the request path.
+
+      * **Database URL Rewrites**
+        The most important fields in the `core_url_rewrite` table are `request_path` and `target_path` using the catalog indexer.
+
+      * **Matching requests**
+        The requests are applied by the Mage_Core_Model_Url_Rewrite_Request model. The request path is parsed to include any variation(with or without the trailling slash) and then
+        looks up the `request_path` column of `the core_url_rewrite` table using the `Mage_Core_Model_Url_Rewrite::LoadByRequestPath()` method.
+
+      * **Request Routing**
+        * Built-in Magento routers(in the order that they are matched).
+          - Admin
+            - Collects all routers for the administration area.
+            - Looks within config.xml for routes within admin.
+          - Standard
+            - Superclass of Admin
+            - Collects routes from within frontend routes defined in config.xml
+          - CMS
+           - Routes CMS pages from identifiers.
+          - Default
+            - This will always match
+            - Routers error or 404 pages.
+
+      The  standard router maps a path to an action by splitting it into `base_url/frontname/controller/action`. The `frontname` is then mapped to a module by way of the configuration files. The controller file
+      is then mapped to a module by way of the configuration files. The controller file is then located at `path/to/module/base/controllers/{Name}/Controller.php`
+      Unmapped requests read the **Default** router where they are rewritten to a 404 page and get mapped by the Standard router on the next iteration.
+
+      Before dispatch, requested module, controller, action and parameters are set. Then it is passed to the controller(`all with the Standard router`)
+
+  * **DESIGN AND LAYOUT INITIALISATION**
+    * The store design `core_design_packages` is initialized in the controller `preDispatch()` method. The package and theme configurations is then determined by the Mage_Core_Model_Design.
+    Layout files get read `$layout->getUpdate()->load()` when the controller calls `$this->loadLayout()`. The same method also compiles the layout `$layout->generateXml()` which processes the
+    layout directives.
+
+    The output is rendered when the controller calls `$this->renderLayout(), which calls each of the blocks defined to output data e.g. output="toHtml" in definition, and merged their output into the response body.
+
+    To add a layout handle to be precessed call
+
+    ```php
+       <?php Mage::getLayout()->getUpdate()->addHandle('new_handle'); ?>
+    ```
+
+    Behind the scenes `Mage_Core_Model_Layout_Update` loads the layout files and their XML while `Mage_Core_Layout` precesses it.
+    Layout XML gets merged, first from modules, then `local.xml` and then the  database. The next step is to remove or references as directed by
+    the `<remove>` element.
+
+    To add a layout file to be merged, add this to an extensions `config.xml` file:
+
+    ```xml
+      <config>
+        <{area}>
+          <layout>
+            <updates>
+              <{name}>
+                <file>{filename.xml}</file>
+              </{name}>
+            </updates>
+          </layout>
+        </{area}>
+      </config>
+    ```
+    This file will then be searched for in `app/design/{area}/{package}/{theme}/layout/{filename.xml}
+
+* **Flushing Data(output)**
+  * Response content gets set by the $layout->renderLayout() method. After the controller dispatch mehotd returns,
+    The Front Controllerr send the response.
+    The `controller_front_send_response_before` event can be used to modify the response before sending. Subsequently, observing
+    for the `controller_front_send_response_after` event allow for cleaning up if necessary.
+    If the output is not sent in a response object but printed out, it can prevent headers from geing sent as it is unbuffered.
