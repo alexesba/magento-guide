@@ -154,7 +154,7 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
       set_include_path($appPath . PS . Mage::registry('original_include_path'));
       include_once "Mage_Core_functions.php";
       include_once "Varien_Autoload.php";
-  } else {
+   } else {
       /**
        * Set include path
        */
@@ -167,7 +167,7 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
       set_include_path($appPath . PS . Mage::registry('original_include_path'));
       include_once "Mage/Core/functions.php";
       include_once "Varien/Autoload.php";
-  }
+   }
 
   Varien_Autoload::register();
   ```
@@ -344,12 +344,12 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
           $cacheLoad = $this->loadModulesCache();
           if ($cacheLoad) {
               return $this;
-          }
+           }
           $this->loadModules();
           $this->loadDb();
           $this->saveCache();
           return $this;
-      }
+       }
   ```
   ``$this->loadBase();``
 
@@ -384,12 +384,12 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
             $this->_isLocalConfigLoaded = $mergeConfig->loadFile($this->getOptions()->getEtcDir().DS.'local.xml');
             if ($this->_isLocalConfigLoaded) {
                 $this->extend($mergeConfig);
-            }
+             }
 
             $this->applyExtends();
             Varien_Profiler::stop('config/load-modules');
             return $this;
-        }
+         }
     ```
   **$this->_loadDeclaredModules();**
     Scan the `app/etc/modules` directory and collect the list of paths to all .xml files, Indicating all modules in the system.
@@ -440,7 +440,7 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
     public static function getModel($modelClass = '', $arguments = array())
     {
         return self::getConfig()->getModelInstance($modelClass, $arguments);
-    }
+     }
   ```
   **getModel()** calls **getModelInstance()** method, which gets class instance with the help of
   **getModelCalssName**
@@ -467,10 +467,10 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
             $obj = new $className($constructArguments);
             Varien_Profiler::stop('CORE::create_object_of::'.$className);
             return $obj;
-        } else {
+         } else {
             return false;
-        }
-    }
+         }
+     }
 
 
     /**
@@ -484,9 +484,9 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
         $modelClass = trim($modelClass);
         if (strpos($modelClass, '/')===false) {
             return $modelClass;
-        }
+         }
         return $this->getGroupedClassName('model', $modelClass);
-    }
+     }
   ```
 
     **getGroupedClassName()** method does all the work. As you can see from **getModelClassName**, we pass the group type(model, block or helper) and the class identifier
@@ -512,7 +512,7 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
       {
           if (empty($groupRootNode)) {
               $groupRootNode = 'global/'.$groupType.'s';
-          }
+           }
 
           $classArr = explode('/', trim($classId));
           $group = $classArr[0];
@@ -520,15 +520,15 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
 
           if (isset($this->_classNameCache[$groupRootNode][$group][$class])) {
               return $this->_classNameCache[$groupRootNode][$group][$class];
-          }
+           }
 
-          $config = $this->_xml->global->{$groupType.'s'}->{$group};
+          $config = $this->_xml->global->{ $groupType.'s' }->{ $group };
 
           // First - check maybe the entity class was rewritten
           $className = null;
           if (isset($config->rewrite->$class)) {
               $className = (string)$config->rewrite->$class;
-          } else {
+           } else {
               /**
                * Backwards compatibility for pre-MMDB extensions.
                * In MMDB release resource nodes <..._mysql4> were renamed to <..._resource>. So <deprecatedNode> is left
@@ -536,30 +536,30 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
                */
               if (isset($config->deprecatedNode)) {
                   $deprecatedNode = $config->deprecatedNode;
-                  $configOld = $this->_xml->global->{$groupType.'s'}->$deprecatedNode;
+                  $configOld = $this->_xml->global->{ $groupType.'s' }->$deprecatedNode;
                   if (isset($configOld->rewrite->$class)) {
                       $className = (string) $configOld->rewrite->$class;
-                  }
-              }
-          }
+                   }
+               }
+           }
 
           // Second - if entity is not rewritten then use class prefix to form class name
           if (empty($className)) {
               if (!empty($config)) {
                   $className = $config->getClassName();
-              }
+               }
               if (empty($className)) {
                   $className = 'mage_'.$group.'_'.$groupType;
-              }
+               }
               if (!empty($class)) {
                   $className .= '_'.$class;
-              }
+               }
               $className = uc_words($className);
-          }
+           }
 
           $this->_classNameCache[$groupRootNode][$group][$class] = $className;
           return $className;
-      }
+       }
   ```
 
 
@@ -583,9 +583,9 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
           if (!self::registry($registryKey)) {
               $helperClass = self::getConfig()->getHelperClassName($name);
               self::register($registryKey, new $helperClass);
-          }
+           }
           return self::registry($registryKey);
-      }
+       }
       ```
       `app/code/core/Mage/Core/Model/Config.php`
       ```php
@@ -599,9 +599,9 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
       {
           if (strpos($helperName, '/') === false) {
               $helperName .= '/data';
-          }
+           }
           return $this->getGroupedClassName('helper', $helperName);
-      }
+       }
       ```
   * **Blocks**
     * The process of instantianting blocks is similar to the one of creating models and helpers. **Blocks** can be instantiated via layout xml
@@ -689,7 +689,7 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
         class Namespace_Modulename_FilenameController extends Prevnamespace_Prevmodulename_FilenameController
         {
           ...
-        }
+         }
     ```
 
   * **Register an Observer**
@@ -719,8 +719,8 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
         public function methodName(Varien_Event_Observer $observer)
         {
           ...
-        }
-      }
+         }
+       }
     ```
 
     We can get the data of the array, transfered in `dispatchEvent` method, via `$observer` object
@@ -863,10 +863,10 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
             <default>
               <web>
                 <routers>
-                  <{name}>
+                  <{ name }>
                     <areas></areas>
                     <class></class>
-                  </{name}>
+                  </{ name }>
                 </routers>
               </web>
             </default>
@@ -877,7 +877,7 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
     * **URL REWRITES**
 
       * **URL Structure**
-        The URL structure in Magento generally uses the format {base_url}/{front_name}/{controller}/{action}.
+        The URL structure in Magento generally uses the format { base_url }/{ front_name }/{ controller }/{ action }.
         `Mage_Core_Controller_Varien_Router_Standard` parses the URLs in this format and maps them to a module used and the controller action to be
         executed.
 
@@ -907,7 +907,7 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
             - Routers error or 404 pages.
 
       The  standard router maps a path to an action by splitting it into `base_url/frontname/controller/action`. The `frontname` is then mapped to a module by way of the configuration files. The controller file
-      is then mapped to a module by way of the configuration files. The controller file is then located at `path/to/module/base/controllers/{Name}/Controller.php`
+      is then mapped to a module by way of the configuration files. The controller file is then located at `path/to/module/base/controllers/{ Name }/Controller.php`
       Unmapped requests read the **Default** router where they are rewritten to a 404 page and get mapped by the Standard router on the next iteration.
 
       Before dispatch, requested module, controller, action and parameters are set. Then it is passed to the controller(`all with the Standard router`)
@@ -933,18 +933,18 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
 
     ```xml
       <config>
-        <{area}>
+        <{ area }>
           <layout>
             <updates>
-              <{name}>
-                <file>{filename.xml}</file>
-              </{name}>
+              <{ name }>
+                <file>{ filename.xml }</file>
+              </{ name }>
             </updates>
           </layout>
-        </{area}>
+        </{ area }>
       </config>
     ```
-    This file will then be searched for in `app/design/{area}/{package}/{theme}/layout/{filename.xml}
+    This file will then be searched for in `app/design/{ area }/{ package }/{ theme }/layout/{ filename.xml }
 
 * **Flushing Data(output)**
   * Response content gets set by the $layout->renderLayout() method. After the controller dispatch mehotd returns,
@@ -974,8 +974,8 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
       * **Design Fallback**
         The theme fallback procedure for locating templates is:
 
-          1. {package}/{theme}
-          2. {package}/default
+          1. { package }/{ theme }
+          2. { package }/default
           3. base/default
 
         To add further directories to the theme fallback mechanism `Mage_Core_Model_Design_Package::getFilename` need to be rewritten
@@ -1021,15 +1021,15 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
         Layout files can be registered in config.xml
         ```xml
           <config>
-            <{area}>
+            <{ area }>
               <layout>
                 <updates>
-                  <{name}>
-                    <file>{filepath} </file>
-                  </{name}>
+                  <{ name }>
+                    <file>{ filepath } </file>
+                  </{ name }>
                 </updates>
               </layout>
-            </{area}>
+            </{ area }>
           </config>
         ```
         >**Page output can be customized in the following ways:**
@@ -1050,3 +1050,103 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
         Javascripts and CSS assets are handled in the `Mage_Page_Block_Html_head`. This block handles the merging of assets into a single file to minimize HTTP requests.
         The merged file is based on the edit time of the source files.
         When mergin CSS, a callback function on `Mage_Core_Model_Design_Package` is called to update any @import or url() directives with the correct URLs.
+
+* **Databases**
+  * **Models, Resource Models and Collections**
+    * **Basic Concepts**
+
+      - A **Model** is used to store and manipulate data about a particular object. Models typically contain the business logic of the application.
+      - A **Resource Model** is used to interact with the database on behalf of the Model. The Resource Model actually performs the CRUD operations.
+      - A **Collection Model** handles working with groups of models and performing(CRUD) operations on groups of models.
+
+    * **Types of Magento Model**
+
+      1. **Simple:**
+        Correspond to a single table
+      2. **EAV**
+        Correspond to multiple tables using the EAV schema design pattern.
+    * **Database Connection**
+      Database connections are configured in config.xml
+      ```xml
+        <config>
+          <global>
+            <resources>
+              <{ identifier }>
+                <connection>
+                  <host>{ host }</host>
+                  <username>{ username }</username>
+                  <password>{ password }</password>
+                  <dbname>{ dbname }</dbname>
+                  <model>{ model }</model>
+                  <initStatements>{ init commands }</initStatements>
+                  <type>{  adapter type  }</type>
+                  <active>{ 0|1 }</active>
+                </connection>
+              </{ identifier }>
+            </resources>
+          </global>
+        </config>
+      ```
+      The core Magento connections(`default_setup, default_read, default_write,core_setup, core_read, core_write`)
+      are configured in `app/etc/config.xml` with the database credentials stored in `app/etc/local.xml`.
+
+    * **Working with Database Tables**
+      Magento used the **Resource Models** to interact with the database tables. When a Model is loaded or saved, it calls
+      its resource model to perform the operation(executing the database queries). Database table names are configured in config.xml
+      and resource modesl retrieve them using look-up methods, which allows for the table names to be customised, e.g. adding a prefix to all
+      table names.
+
+      Tables are called entities and are configured like so:
+        ```xml
+          <config>
+            <glogal>
+              <models>
+                <muslen>
+                  <class>Muslen_Module_Model</class>
+                  <resourceModel>muslen_resource</resourceModel>
+                </muslen>
+                <muslen_resource>
+                  <entitiess>
+                    <table_one>
+                      <tableo>muslen_module_tableOne</tableo>
+                    </table_one>
+                  </entitiess>
+                </muslen_resource>
+              </models>
+            </glogal>
+          </config>
+        ```
+
+        This allows us to load the table via `getTable('muslen/table_one');`.
+* **Performing Joins**
+  The following methods exist to create joins between tables on collections and on select instances.
+
+  * Zend_Db_Select::join()
+  * Zend_Db_Select::joinInner()
+  * Zend_Db_Select::joinLeft()
+  * Zend_Db_Select::joinRight()
+  * Zend_Db_Select::joinFull()
+  * Zend_Db_Select::joinCross()
+  * Zend_Db_Select::joinNatural()
+  * Mage_Core_Model_Resource_Db_Collection_Abstract::join()
+
+* **Table Name Lookups**
+  Use `Mage::getModel('core/resource')->getTablename($modelEntity)` to retrieve the defined table for any model.
+  Table names in Magento are configurable to allow customizing and overriding the database schema e.g. using custom table.
+
+  Accessing resource models can be done using the class `Mage_Core_Model_Resource_Db_Abstract` and the methods `getMainTable() and getTable($entityName)`.
+
+* **Loading Data**
+  The loading of a model from the database is done using the `load($id, $field = null)` method. The field argument allows the developer to load the records from a different key,
+  if no field is specified, then the resource model  identifies the primary key based on the parameters provided to the `_init($table, $key)` method call when the resource model
+  was constructed.
+
+  Magento uses Zend database abstraction classes like `Zend_Db_Select` to perform database operations. These classes allow building and executing database queries without having
+  to use the syntax of the specific database engine being used.
+
+  When a record is fetched with `Zend_Db_Select` it is added to the `Varien_Object` using `setData($data)`. Some fields may be serialized in the database, so they are un-serialized
+  before adding to the `Varien_Object`.
+
+* **Saving Data**
+  Saving is not as trivial as loading. The first step is to check to see if the model has any changes. Both `setData($data)` or `unsetData($key, $value)` set the `_hasDataChanges` flag
+  on the model. This flag can then be used to determine whether it needs to be written out to the database.
