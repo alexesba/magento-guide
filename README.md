@@ -1150,3 +1150,132 @@ A non-default theme, contrariwise, should have a sigle layout file, named local.
 * **Saving Data**
   Saving is not as trivial as loading. The first step is to check to see if the model has any changes. Both `setData($data)` or `unsetData($key, $value)` set the `_hasDataChanges` flag
   on the model. This flag can then be used to determine whether it needs to be written out to the database.
+
+  A **transaction** is then begun so that any changes can be rolled back in the event that something goes wrong during the saving process.
+
+  Firstly a check for uniqueness is performed. This queries the database to check whether each of the fields marked as unique are actually unique. If a duplicate key is found, then
+  it is bubbled up using an exception.
+
+  The data then needs to be prepared for insertion or update. This is performed in the `prepareDataForSave()` method. This calls DESCRIBE on the table to identify the column types and
+  sanitise the input accordingly. This description is, of course, cached.**This is the reason that cache needs to be cleared if scheme changes are made.**
+
+  The next problem is identifying whether an `INSERT` or and `UPDATE` statement is required. This is usually performed by checking for the existence of the primary key by calling
+  `$model->getID() == null`, and here is no exception. If there is no ID set, then it is auto-incremented in the database and needs to be fetched from there. After performing the
+  `INSERT, getLastInsertId()` is called on the write adapter to add it to the model.
+
+  If there was an ID specified on the model when save was called, it's either because an update to a model is being saved or because the ID of the model is not controlled by the database
+  with an auto-increment. If the flag `_isPkAutoIncrement` is set then an UPDATE can be used. Otherwise the database needs to be checked for an existing record with this key. An UPDATE
+  occurs if there is a key, otherwise an INSERT is used.
+
+  The `_isPkAutoIncrement` flag is set to true as a default and can be overwritten by a subclass.
+
+* **Collection Interface**
+  Collection Models provide a consistent interface for performing filtering and sorting models, e.g. `addFieldToFilter(), addOrder()` and `setOrder()`.
+
+* **Group Save Operations**
+  When several save operations have to be performed for an entity, Magento uses database transactions to ensure that the data stays in a cosnsitent stat in the database.
+
+* **Filtering Flat Table Collections**
+  Through the use of:
+    * `$collection->addFilter()`
+    * `$collection->getSelect()->where()`
+
+* **Ordering Flat Table Collections**
+  Through the use of:
+    * $collection->setOrder()
+    * $collection->getSelect()->order()
+
+  The first method goes through the collection interface, which could perform additional logic, while the second method operates directly on the underlying database
+  select statement.
+* **Events fired by CRUD operations**
+  * `model_load_before`
+  * `model_load_after`
+  * `model_save_commit_after`
+  * `model_save_before`
+  * `model_save_after`
+  * `model_delete_before`
+  * `model_delete_after`
+  * `model_delete_commit_after`
+  * {collection_event_prefix}_load_before
+  * {collection_event_prefix}_load_after
+
+* **Setup, Read and Write Database Resources**
+  Resource models request the specific types of database connections they require.
+  They different types are defined to allow for different permissions over the
+  database. For example, read for read-only connection, write for changing data,
+  and setup for resource intensive setup process. However, in practice, all of
+  Magento's connection reesources inherit from the `default_setup` resource, so they
+  all use the same connection.
+
+* **Install and Upgrade Scripts**
+  Magento uses **Setup Resource Models** to perform install and upgrade operations for modules.
+  These are executed during the application initialisation where each Setup Resource is allowed
+  to apply any updates it requires. This is usually done by inspecting the installed version of
+  the module from the core_resource table and executing any setup scripts defined.
+
+  **Setup resources are defined in config.xml**
+    ```xml
+      <config>
+        <global>
+          <resources>
+            <{ resource_name }>
+              <setup>
+                <module> { module_name } </module>
+                <class> { setup_resource_class } </class>
+              </setup>
+            </{ resource_name }>
+          </resources>
+        </global>
+      </config>
+    ```
+  Then the install and upgrade scripts, which are simple PHP scripts executed by
+  including them within the setup resource, are placed in `{ module_root }/sql/{ resource_name}/
+  ` for **system install/upgrade** scripts or `{ module_root }/data/{ resource_name}/` for **data
+  install/upgrade** scripts
+
+  The scripts use the following naming scheme:
+    * `install-{ version }.php`
+    * `update-{ from_version }-{ to_version }.php`
+    * `data-install-{ version }.php`
+    * `data-upgrade-{ from_version }-{ to_version }.php`
+
+    > If the module is not present in the database, the Setup Model will install
+    the module by first running the latest install script and then the upgrade
+    scripts since the install script version.
+
+    > If the module verson in `config.xml` is higher than the version in the
+    database, the Setup Model performs an upgrade by running all upgrade
+    scripts  which have a `from-version` higher or equal to the database version
+    and `to-version` lower or equal to the new config version.
+
+  *  **Different Setup Scripts**
+    Different Setup classes have additional methodsto aid the install or upgrade
+    procedures of their paticulaar entities, e.g. the **EAV** setup resource
+    has methods for creating entity attributes.
+    > The base setup classses for flat dables and EAV entities are
+    `Mage_Core_Model_Resource_Setup` and `Mage_Eav_Model_Entity_Setup` respectively.
+  * **Available Setup Methods**
+    * `startSetup()`
+    * `endSetup()`
+    * `getTable()`
+    * `setTable()`
+    * `updateTable()`
+    * `run($sql)`
+
+  * **EAV attributes Setup MEthods**
+    * `addAttribute()` - Handles attribute creation, including creating attribute data,
+    adding it to groups and sets and setting attribute options.
+    * `updateAttribute() - Simply updates the attribute data. It is also called by
+      `addAttribute()` if the attribute being added already exists.
+
+  * **Database Rollback**
+    Magento defines a module rollback procedure when the `config.xml` module
+    version is lower than the database version. Howeverm the rollback script
+    execution is not actually implemented.
+
+ * **Supporting multiple RDBMSs**
+  Magento abstracts database engine logic by using the Varien_Db_Adapter_Interface.
+  Database engine classes implement this interface, which makes it easy to replace
+  one egine class with another without having to rewrite all models that use the
+  database. The actual RDBMS used is defined in the connection configuration
+  using the `<type>` field, e.g. `<type>pdo_mysql</type>`
